@@ -30,7 +30,7 @@ def take_quiz(request):
     return render(request, 'take_quiz.html', context)
 def home_view(request):
     if request.method == "GET":
-        return render(request, 'base.html', {})
+        return render(request, 'home.html', {})
 
 # def sign_up(request):
 #     if request.method == "POST":

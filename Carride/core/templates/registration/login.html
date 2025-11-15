@@ -1,45 +1,47 @@
 {% extends 'base.html' %}
 
-{% block title %}login{% endblock %}
+{% block title %}Login{% endblock %}
 
 {% block content %}
-<div class="w-1/2 my-6 mx-auto p-6 bg-gray-100 rounded-xl"><!--mx-auto centers-->
-    <h1 class="mb-6 text-3xl">Login</h1>
+<div class="w-full max-w-md mx-auto my-12 p-8 bg-white rounded-lg shadow-md">
+    <h1 class="mb-6 text-3xl font-bold text-center">Login</h1>
 
     <form method="post" action=".">
         {% csrf_token %}
 
-        <!-- {{ form.as_p }} this would show standard form for -->
-
-        <div class="mb-3">
-            <label class="inline-block mb-2">Username</label><br>
+        <div class="mb-4">
+            <label class="block text-gray-700 font-semibold mb-2">Username</label>
             {{ form.username }}
         </div>
 
-        <div class="mb-3">
-            <label class="inline-block mb-2">Email</label><br>
-            {{ form.email }}
-        </div>
-
-        <div class="mb-3">
-            <label class="inline-block mb-2">Password</label><br>
+        <div class="mb-4">
+            <label class="block text-gray-700 font-semibold mb-2">Password</label>
             {{ form.password }}
         </div>
 
-
         {% if form.errors or form.non_field_errors %}
-            <div class="mb-3 p-6 bg-red-100 rounded-xl">
+            <div class="mb-4 p-4 bg-red-100 border border-red-400 rounded text-red-700">
+                {% if form.non_field_errors %}
+                    <p class="font-semibold">Login Failed</p>
+                    {% for error in form.non_field_errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                {% endif %}
                 {% for field in form %}
-                    {{ field.errors }}
+                    {% if field.errors %}
+                        <p>{{ field.errors }}</p>
+                    {% endif %}
                 {% endfor %}
-
-                {{ form.non_field_erros }}
-                <label class="inline-block mb-2">Try again, your username or password was incorrect.</label>
             </div>
-
         {% endif %}
 
-        <button class="py-4 px-8 text-lg bg-orange-400 hover:bg-orange-700 rounded-xl text-white">Submit</button>
+        <button type="submit" class="w-full py-3 px-4 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition">
+            Login
+        </button>
     </form>
+
+    <p class="mt-6 text-center text-gray-600">
+        Don't have an account? <a href="{% url 'core:signup' %}" class="text-orange-500 font-semibold hover:text-orange-600">Sign up here</a>
+    </p>
 </div>
 {% endblock %}
