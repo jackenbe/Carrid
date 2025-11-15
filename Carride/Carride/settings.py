@@ -80,8 +80,8 @@ LINKEDIN_CLIENT_ID = os.getenv("LINKEDIN_CLIENT_ID")
 LINKEDIN_CLIENT_SECRET = os.getenv("LINKEDIN_CLIENT_SECRET")
 LINKEDIN_REDIRECT_URI = os.getenv("LINKEDIN_REDIRECT_URI")
 
-# Convert comma-separated .env to list
-LINKEDIN_SCOPES = os.getenv("LINKEDIN_SCOPES", "").split(",")
+# Convert comma-separated .env to list and clean up whitespace
+LINKEDIN_SCOPES = [scope.strip() for scope in os.getenv("LINKEDIN_SCOPES", "").split(",") if scope.strip()]
 
 ADK_API_KEY = os.getenv("ADK_API_KEY")
 
