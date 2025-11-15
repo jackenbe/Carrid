@@ -107,47 +107,92 @@ def linkedin_callback(request):
 
     code = request.GET.get("code")
 
-    # Exchange code for token
-    token_resp = requests.post(
-        "https://www.linkedin.com/oauth/v2/accessToken",
-        data={
-            "grant_type": "authorization_code",
-            "code": code,
-            "redirect_uri": settings.LINKEDIN_REDIRECT_URI,
-            "client_id": settings.LINKEDIN_CLIENT_ID,
-            "client_secret": settings.LINKEDIN_CLIENT_SECRET,
-        },
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
+    try:
+        # Exchange code for token
+        token_resp = requests.post(
+            "https://www.linkedin.com/oauth/v2/accessToken",
+            data={
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": settings.LINKEDIN_REDIRECT_URI,
+                "client_id": settings.LINKEDIN_CLIENT_ID,
+                "client_secret": settings.LINKEDIN_CLIENT_SECRET,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
 
-    token_data = token_resp.json()
+        if token_resp.status_code != 200:
+            error_msg = f"LinkedIn token error: {token_resp.text}"
+            print(error_msg)
+            return render(request, 'linkedin_connected.html', {
+                'success': False,
+                'message': f'Failed to get access token from LinkedIn: {token_resp.text}'
+            })
 
-    access_token = token_data["access_token"]
-    refresh_token = token_data.get("refresh_token")
-    expires_in = token_data["expires_in"]
+        token_data = token_resp.json()
 
-    # Get LinkedIn Profile for member ID
-    me = requests.get(
-        "https://api.linkedin.com/v2/me",
-        headers={"Authorization": f"Bearer {access_token}"}
-    ).json()
+        if 'access_token' not in token_data:
+            error_msg = f"No access token in response: {token_data}"
+            print(error_msg)
+            return render(request, 'linkedin_connected.html', {
+                'success': False,
+                'message': f'Failed to get access token: {error_msg}'
+            })
 
-    linkedin_id = me["id"]
-    linkedin_urn = f"urn:li:person:{linkedin_id}"
+        access_token = token_data["access_token"]
+        refresh_token = token_data.get("refresh_token")
+        expires_in = token_data.get("expires_in", 3600)
 
-    # Save to DB
-    account, created = LinkedInAccount.objects.get_or_create(user=request.user)
-    account.access_token = access_token
-    account.refresh_token = refresh_token
-    account.expires_at = timezone.now() + timedelta(seconds=expires_in)
-    account.linkedin_member_urn = linkedin_urn
-    account.save()
+        # Get LinkedIn Profile for member ID
+        me_resp = requests.get(
+            "https://api.linkedin.com/v2/me",
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
 
-    # Redirect to a success page or post creation
-    return render(request, 'linkedin_connected.html', {
-        'success': True,
-        'message': 'LinkedIn connected successfully! You can now create and post content.'
-    })
+        if me_resp.status_code != 200:
+            error_msg = f"Failed to get LinkedIn profile: {me_resp.text}"
+            print(error_msg)
+            return render(request, 'linkedin_connected.html', {
+                'success': False,
+                'message': f'Failed to get LinkedIn profile: {error_msg}'
+            })
+
+        me = me_resp.json()
+        print(f"LinkedIn API response: {me}")
+
+        # LinkedIn API returns 'id' field
+        if "id" not in me:
+            error_msg = f"No 'id' in LinkedIn response. Response: {me}"
+            print(error_msg)
+            return render(request, 'linkedin_connected.html', {
+                'success': False,
+                'message': 'Failed to get LinkedIn profile ID. Please ensure your app has the correct scopes.'
+            })
+
+        linkedin_id = me["id"]
+        linkedin_urn = f"urn:li:person:{linkedin_id}"
+
+        # Save to DB
+        account, created = LinkedInAccount.objects.get_or_create(user=request.user)
+        account.access_token = access_token
+        account.refresh_token = refresh_token
+        account.expires_at = timezone.now() + timedelta(seconds=expires_in)
+        account.linkedin_member_urn = linkedin_urn
+        account.save()
+
+        # Redirect to a success page or post creation
+        return render(request, 'linkedin_connected.html', {
+            'success': True,
+            'message': 'LinkedIn connected successfully! You can now create and post content.'
+        })
+
+    except Exception as e:
+        error_msg = f"LinkedIn callback error: {str(e)}"
+        print(error_msg)
+        return render(request, 'linkedin_connected.html', {
+            'success': False,
+            'message': f'Error connecting to LinkedIn: {str(e)}'
+        })
 
 
 
