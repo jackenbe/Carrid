@@ -3,20 +3,15 @@ from .form import QuizForm, SignUpForm, LinkedInPostForm
 import urllib.parse
 from .utils import generate_state
 from django.conf import settings
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.forms import UserCreationForm
 import requests
 from datetime import timedelta
 from django.utils import timezone
-from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
-
-from .utils import generate_state
 from .models import LinkedInAccount
-from django.http import JsonResponse
 from .ai_utils import rewrite_post_with_gemini
 from .linkedin import post_to_linkedin
-from google import generativeai as genai
 
 
 # Create your views here.
@@ -27,12 +22,12 @@ def take_quiz(request):
         if form.is_valid():
             form.save()
             context['form'] = form
-            redirect('/home')
+            return redirect('core:home_view')
     else:
         form = QuizForm(user=request.user)
         context['form'] = form
 
-    return render(request, )
+    return render(request, 'take_quiz.html', context)
 def home_view(request):
     if request.method == "GET":
         return render(request, 'base.html', {})
@@ -53,7 +48,7 @@ def contact(request):
     return render(request, 'contact.html')
 
 def signup(request):
-    if request.method == 'post':
+    if request.method == 'POST':
         form = SignUpForm(request.POST)
 
         if form.is_valid():
@@ -141,37 +136,58 @@ def linkedin_callback(request):
     return HttpResponse("LinkedIn connected successfully!")
 
 
-genai.configure(api_key=settings.ADK_API_KEY)
 
 @login_required
 def generate_and_post(request):
+    # Check if user has connected LinkedIn
+    try:
+        account = LinkedInAccount.objects.get(user=request.user)
+        linkedin_connected = True
+    except LinkedInAccount.DoesNotExist:
+        account = None
+        linkedin_connected = False
+
     if request.method == "POST":
+        if not linkedin_connected:
+            return HttpResponse("Please connect your LinkedIn account first!", status=400)
+        
         user_text = request.POST.get("user_text")
         image_file = request.FILES.get("image")  # uploaded file, optional
 
         # 1. Generate final caption using Gemini
-        model = genai.GenerativeModel("gemini-pro")
-        ai_response = model.generate_content(
-            f"Rewrite this into a strong, professional LinkedIn post: {user_text}"
-        )
-        final_text = ai_response.text
+        final_text = rewrite_post_with_gemini(user_text)
 
         # 2. Save image temporarily
+        img_path = None
         if image_file:
-            img_path = f"media/temp/{image_file.name}"
+            import os
+            media_dir = settings.MEDIA_ROOT
+            if not os.path.exists(media_dir):
+                os.makedirs(media_dir)
+            img_path = os.path.join(media_dir, f"temp_{image_file.name}")
             with open(img_path, "wb") as f:
                 for chunk in image_file.chunks():
                     f.write(chunk)
-        else:
-            img_path = None
 
         # 3. Post to LinkedIn
-        result = post_to_linkedin(
-            user=request.user,
-            text=final_text,
-            image_path=img_path
-        )
+        try:
+            result = post_to_linkedin(
+                user=request.user,
+                text=final_text,
+                image_path=img_path
+            )
+            return render(request, "linkedin_connected.html", {
+                "success": True,
+                "message": "Posted to LinkedIn successfully!",
+                "final_text": final_text
+            })
+        except Exception as e:
+            return render(request, "linkedin_connected.html", {
+                "success": False,
+                "message": f"Error posting to LinkedIn: {str(e)}",
+                "final_text": final_text
+            })
 
-        return HttpResponse("Posted to LinkedIn!")
-
-    return render(request, "generate_post.html")
+    return render(request, "generate_post.html", {
+        "linkedin_connected": linkedin_connected
+    })

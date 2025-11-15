@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}LinkedIn Post Result{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto py-12">
+    {% if success %}
+    <div class="bg-green-100 border-l-4 border-green-500 text-green-900 p-6 rounded mb-8">
+        <h2 class="text-2xl font-bold mb-2">✓ Success!</h2>
+        <p class="text-lg">Your post has been successfully published to LinkedIn!</p>
+    </div>
+
+    <div class="bg-white border border-gray-300 rounded-lg p-6 mb-8">
+        <h3 class="text-lg font-semibold mb-4">Your Generated Post:</h3>
+        <div class="bg-gray-50 p-4 rounded border border-gray-200">
+            <p class="whitespace-pre-wrap text-gray-800">{{ final_text }}</p>
+        </div>
+    </div>
+
+    <div class="space-y-4">
+        <a href="{% url 'core:linkedin_post' %}" class="block w-full px-6 py-3 bg-orange-500 text-white font-bold rounded-lg hover:bg-orange-600 text-center">
+            Create Another Post
+        </a>
+        <a href="{% url 'core:home_view' %}" class="block w-full px-6 py-3 bg-gray-500 text-white font-bold rounded-lg hover:bg-gray-600 text-center">
+            Return Home
+        </a>
+    </div>
+
+    <div class="mt-12 pt-6 border-t border-gray-200 bg-blue-50 p-4 rounded">
+        <h4 class="font-semibold text-blue-900 mb-2">View Your Post on LinkedIn</h4>
+        <p class="text-blue-800">
+            Head over to <a href="https://www.linkedin.com" target="_blank" class="underline font-bold">LinkedIn</a> to see your post live! 
+            It should appear on your profile and in your network's feed within a few moments.
+        </p>
+    </div>
+
+    {% else %}
+    <div class="bg-red-100 border-l-4 border-red-500 text-red-900 p-6 rounded mb-8">
+        <h2 class="text-2xl font-bold mb-2">✗ Error</h2>
+        <p class="text-lg">{{ message }}</p>
+    </div>
+
+    <div class="bg-white border border-gray-300 rounded-lg p-6 mb-8">
+        <h3 class="text-lg font-semibold mb-4">Generated Text (Before Error):</h3>
+        <div class="bg-gray-50 p-4 rounded border border-gray-200">
+            <p class="whitespace-pre-wrap text-gray-800">{{ final_text }}</p>
+        </div>
+    </div>
+
+    <div class="space-y-4">
+        <a href="{% url 'core:linkedin_post' %}" class="block w-full px-6 py-3 bg-orange-500 text-white font-bold rounded-lg hover:bg-orange-600 text-center">
+            Try Again
+        </a>
+        <a href="{% url 'core:home_view' %}" class="block w-full px-6 py-3 bg-gray-500 text-white font-bold rounded-lg hover:bg-gray-600 text-center">
+            Return Home
+        </a>
+    </div>
+
+    <div class="mt-8 p-4 bg-yellow-50 border border-yellow-200 rounded">
+        <p class="text-yellow-900 text-sm">
+            <strong>Troubleshooting:</strong> If you continue to experience issues, make sure your LinkedIn account is properly connected 
+            and that your API credentials are valid.
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

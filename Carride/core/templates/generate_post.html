@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Generate LinkedIn Post{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto py-12">
+    <h2 class="text-3xl font-bold mb-8">Generate LinkedIn Post</h2>
+
+    {% if not linkedin_connected %}
+    <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6">
+        <p class="font-bold">LinkedIn Account Required</p>
+        <p>You need to connect your LinkedIn account before posting. <a href="{% url 'core:linkedin_auth_url' %}" class="underline font-bold">Connect now</a></p>
+    </div>
+    {% else %}
+    <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6">
+        <p class="font-bold">✓ LinkedIn Account Connected</p>
+        <p>You're ready to post to LinkedIn!</p>
+    </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+        
+        <div>
+            <label for="user_text" class="block text-lg font-semibold mb-2">Share Your Experience</label>
+            <textarea 
+                id="user_text"
+                name="user_text"
+                rows="6"
+                required
+                placeholder="Describe what you accomplished, learned, or experienced..."
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
+            ></textarea>
+            <p class="text-gray-600 text-sm mt-1">Tell us about your project, internship, event, learning, or achievement</p>
+        </div>
+
+        <div>
+            <label for="image" class="block text-lg font-semibold mb-2">Add an Image (Optional)</label>
+            <input 
+                type="file"
+                id="image"
+                name="image"
+                accept="image/*"
+                class="block w-full text-gray-700 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
+            />
+            <p class="text-gray-600 text-sm mt-1">Upload an image to attach to your post (JPG, PNG, etc.)</p>
+        </div>
+
+        <div class="bg-blue-50 border-l-4 border-blue-500 p-4">
+            <p class="text-blue-900 text-sm">
+                <strong>Note:</strong> Your post will be rewritten using AI to be more engaging and professional before posting to LinkedIn.
+            </p>
+        </div>
+
+        <button 
+            type="submit"
+            {% if not linkedin_connected %}disabled{% endif %}
+            class="w-full px-6 py-3 bg-orange-500 text-white font-bold rounded-lg hover:bg-orange-600 {% if not linkedin_connected %}opacity-50 cursor-not-allowed{% endif %}"
+        >
+            Generate & Post to LinkedIn
+        </button>
+    </form>
+
+    <div class="mt-12 pt-6 border-t border-gray-200">
+        <h3 class="text-lg font-semibold mb-4">Tips for Great LinkedIn Posts:</h3>
+        <ul class="space-y-2 text-gray-700">
+            <li>✓ Be specific about what you learned or accomplished</li>
+            <li>✓ Use authentic language and tell your story</li>
+            <li>✓ Mention key people or organizations if relevant</li>
+            <li>✓ Include relevant hashtags in your description</li>
+            <li>✓ High-quality images get more engagement</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
