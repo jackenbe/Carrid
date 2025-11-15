@@ -1,0 +1,25 @@
+{% extend "base.html" %}
+
+{% block content %}
+<div class="quiz-wrapper">
+    <div class="quiz-card">
+        <h1>Tell us about your jounery</h1>
+        <p class = "quiz-subtitle">
+            Answer a few quick questions so we can build your personalized career roadmap and LinkedIn suggestions.
+        </p>
+
+        <form method="post" enctype="multipart/form-data" class="quiz-form">
+            {% csrf_token %}
+
+        <div class="form-group">
+            {{ form.university.label_tag }}
+            {{ form.university }}
+            {% if form.university.help_text %}
+                <small class="help-text">{{ form.university.help_text }}</small>
+            {% endif %}
+            {{ form.university.errors }}
+        </div>
+    {% endif %}
+
+    {{% if form.major %}}
+    <div class=""

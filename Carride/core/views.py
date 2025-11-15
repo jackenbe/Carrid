@@ -1,0 +1,177 @@
+from django.shortcuts import render, redirect
+from .form import QuizForm, SignUpForm, LinkedInPostForm
+import urllib.parse
+from .utils import generate_state
+from django.conf import settings
+from django.http import JsonResponse
+from django.contrib.auth.forms import UserCreationForm
+import requests
+from datetime import timedelta
+from django.utils import timezone
+from django.http import HttpResponse
+from django.contrib.auth.decorators import login_required
+
+from .utils import generate_state
+from .models import LinkedInAccount
+from django.http import JsonResponse
+from .ai_utils import rewrite_post_with_gemini
+from .linkedin import post_to_linkedin
+from google import generativeai as genai
+
+
+# Create your views here.
+def take_quiz(request):
+    context = {'form': None}
+    if request.method == "POST":
+        form = QuizForm(request.POST, user=request.user)
+        if form.is_valid():
+            form.save()
+            context['form'] = form
+            redirect('/home')
+    else:
+        form = QuizForm(user=request.user)
+        context['form'] = form
+
+    return render(request, )
+def home_view(request):
+    if request.method == "GET":
+        return render(request, 'base.html', {})
+
+# def sign_up(request):
+#     if request.method == "POST":
+#         form = UserCreationForm(request.POST)
+#         if form.is_valid():
+#             user = form.save()
+#             login(request, user)
+#             return redirect('/home')
+#     else:
+#         form = UserCreationForm()
+
+#     return render(request, 'sign_up.html', {'form': form})
+
+def contact(request):
+    return render(request, 'contact.html')
+
+def signup(request):
+    if request.method == 'post':
+        form = SignUpForm(request.POST)
+
+        if form.is_valid():
+            form.save()
+            return redirect('core:login')
+    else:
+        form = SignUpForm()
+            
+    return render(request, 'signup.html', {
+        'form': form
+    })
+
+def privacy_policy(request):
+    return render(request, 'privacy_policy.html')
+
+def terms_of_use(request):
+    return render(request, 'terms_of_use.html')
+
+
+@login_required
+def linkedin_auth_url(request):
+    state = generate_state()
+    request.session["linkedin_oauth_state"] = state
+
+    base_url = "https://www.linkedin.com/oauth/v2/authorization"
+    params = {
+        "response_type": "code",
+        "client_id": settings.LINKEDIN_CLIENT_ID,
+        "redirect_uri": settings.LINKEDIN_REDIRECT_URI,
+        "scope": " ".join(settings.LINKEDIN_SCOPES),
+        "state": state,
+    }
+
+    auth_url = f"{base_url}?{urllib.parse.urlencode(params)}"
+    return redirect(auth_url)
+
+
+@login_required
+def linkedin_callback(request):
+    # Verify state
+    stored_state = request.session.get("linkedin_oauth_state")
+    received_state = request.GET.get("state")
+
+    if stored_state != received_state:
+        return HttpResponse("Invalid state token", status=400)
+
+    code = request.GET.get("code")
+
+    # Exchange code for token
+    token_resp = requests.post(
+        "https://www.linkedin.com/oauth/v2/accessToken",
+        data={
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": settings.LINKEDIN_REDIRECT_URI,
+            "client_id": settings.LINKEDIN_CLIENT_ID,
+            "client_secret": settings.LINKEDIN_CLIENT_SECRET,
+        },
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+
+    token_data = token_resp.json()
+
+    access_token = token_data["access_token"]
+    refresh_token = token_data.get("refresh_token")
+    expires_in = token_data["expires_in"]
+
+    # Get LinkedIn Profile for member ID
+    me = requests.get(
+        "https://api.linkedin.com/v2/me",
+        headers={"Authorization": f"Bearer {access_token}"}
+    ).json()
+
+    linkedin_id = me["id"]
+    linkedin_urn = f"urn:li:person:{linkedin_id}"
+
+    # Save to DB
+    account, created = LinkedInAccount.objects.get_or_create(user=request.user)
+    account.access_token = access_token
+    account.refresh_token = refresh_token
+    account.expires_at = timezone.now() + timedelta(seconds=expires_in)
+    account.linkedin_member_urn = linkedin_urn
+    account.save()
+
+    return HttpResponse("LinkedIn connected successfully!")
+
+
+genai.configure(api_key=settings.ADK_API_KEY)
+
+@login_required
+def generate_and_post(request):
+    if request.method == "POST":
+        user_text = request.POST.get("user_text")
+        image_file = request.FILES.get("image")  # uploaded file, optional
+
+        # 1. Generate final caption using Gemini
+        model = genai.GenerativeModel("gemini-pro")
+        ai_response = model.generate_content(
+            f"Rewrite this into a strong, professional LinkedIn post: {user_text}"
+        )
+        final_text = ai_response.text
+
+        # 2. Save image temporarily
+        if image_file:
+            img_path = f"media/temp/{image_file.name}"
+            with open(img_path, "wb") as f:
+                for chunk in image_file.chunks():
+                    f.write(chunk)
+        else:
+            img_path = None
+
+        # 3. Post to LinkedIn
+        result = post_to_linkedin(
+            user=request.user,
+            text=final_text,
+            image_path=img_path
+        )
+
+        return HttpResponse("Posted to LinkedIn!")
+
+    return render(request, "generate_post.html")

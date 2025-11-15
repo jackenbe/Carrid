@@ -1,0 +1,66 @@
+# ---- Django & Python ----
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.sqlite
+*.log
+
+# Virtual environment
+venv/
+.venv/
+
+# Environment variables / Secrets
+.env
+.env.local
+*.env
+
+# Django static & media
+/static/
+staticfiles/
+media/
+media_root/
+
+# Django migration junk (keep migrations but ignore compiled junk)
+*/migrations/__pycache__/
+*/migrations/*.pyc
+
+# IDE files
+# PyCharm
+.idea/
+*.iml
+# VSCode
+.vscode/
+
+# MacOS & Windows junk
+.DS_Store
+Thumbs.db
+
+# Python build artifacts
+build/
+dist/
+*.egg-info/
+
+# Node / frontend stuff (if using)
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Compiled translations
+*.mo
+
+# __pycache__ anywhere
+**/__pycache__/
+
+# pytest / coverage
+htmlcov/
+.coverage
+.cache
+
+# Backup files
+*.bak
+*.orig
+*.swp
