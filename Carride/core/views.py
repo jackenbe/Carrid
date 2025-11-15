@@ -86,14 +86,24 @@ def linkedin_auth_url(request):
     return redirect(auth_url)
 
 
-@login_required
 def linkedin_callback(request):
-    # Verify state
+    """
+    LinkedIn OAuth2 callback endpoint
+    Handles the redirect from LinkedIn after user authorization
+    """
+    # Check if user is authenticated
+    if not request.user.is_authenticated:
+        # Store the callback data in session and redirect to login
+        request.session['linkedin_callback_code'] = request.GET.get('code')
+        request.session['linkedin_callback_state'] = request.GET.get('state')
+        return redirect('core:login')
+    
+    # Verify state token for security
     stored_state = request.session.get("linkedin_oauth_state")
     received_state = request.GET.get("state")
 
     if stored_state != received_state:
-        return HttpResponse("Invalid state token", status=400)
+        return HttpResponse("Invalid state token - possible CSRF attack", status=400)
 
     code = request.GET.get("code")
 
@@ -133,7 +143,11 @@ def linkedin_callback(request):
     account.linkedin_member_urn = linkedin_urn
     account.save()
 
-    return HttpResponse("LinkedIn connected successfully!")
+    # Redirect to a success page or post creation
+    return render(request, 'linkedin_connected.html', {
+        'success': True,
+        'message': 'LinkedIn connected successfully! You can now create and post content.'
+    })
 
 
 
