@@ -141,7 +141,18 @@ def linkedin_callback(request):
 
         access_token = token_data["access_token"]
         refresh_token = token_data.get("refresh_token")
-        expires_in = token_data.get("expires_in", 3600)
+        expires_in = token_data.get("expires_in")
+        
+        # Default to 1 hour if expires_in is not provided
+        if not expires_in:
+            expires_in = 3600
+            print(f"Warning: expires_in not in token response, using default 3600 seconds")
+        
+        try:
+            expires_in = int(expires_in)
+        except (ValueError, TypeError):
+            expires_in = 3600
+            print(f"Warning: expires_in is not a valid integer, using default 3600 seconds")
 
         # Get LinkedIn Profile using userinfo endpoint
         # This endpoint works with openid, email, profile scopes
@@ -177,12 +188,21 @@ def linkedin_callback(request):
         linkedin_urn = f"urn:li:person:{linkedin_id}"
 
         # Save to DB
-        account, created = LinkedInAccount.objects.get_or_create(user=request.user)
-        account.access_token = access_token
-        account.refresh_token = refresh_token
-        account.expires_at = timezone.now() + timedelta(seconds=expires_in)
-        account.linkedin_member_urn = linkedin_urn
-        account.save()
+        try:
+            account, created = LinkedInAccount.objects.get_or_create(user=request.user)
+            account.access_token = access_token
+            account.refresh_token = refresh_token
+            account.expires_at = timezone.now() + timedelta(seconds=expires_in)
+            account.linkedin_member_urn = linkedin_urn
+            account.save()
+            
+            print(f"Successfully saved LinkedIn account for user {request.user.username}")
+        except Exception as db_error:
+            print(f"Database error saving LinkedIn account: {str(db_error)}")
+            return render(request, 'linkedin_connected.html', {
+                'success': False,
+                'message': f'Error saving LinkedIn account: {str(db_error)}'
+            })
 
         # Redirect to a success page or post creation
         return render(request, 'linkedin_connected.html', {
