@@ -143,6 +143,8 @@ def linkedin_callback(request):
         refresh_token = token_data.get("refresh_token")
         expires_in = token_data.get("expires_in")
         
+        print(f"Token data received: access_token={access_token[:20]}..., expires_in={expires_in}, refresh_token={bool(refresh_token)}")
+        
         # Default to 1 hour if expires_in is not provided
         if not expires_in:
             expires_in = 3600
@@ -192,13 +194,26 @@ def linkedin_callback(request):
             account, created = LinkedInAccount.objects.get_or_create(user=request.user)
             account.access_token = access_token
             account.refresh_token = refresh_token
-            account.expires_at = timezone.now() + timedelta(seconds=expires_in)
+            
+            # Calculate expires_at with proper error handling
+            try:
+                expires_at = timezone.now() + timedelta(seconds=int(expires_in))
+                account.expires_at = expires_at
+                print(f"Token expires at: {expires_at}")
+            except Exception as time_error:
+                print(f"Error calculating expires_at: {str(time_error)}, expires_in={expires_in}")
+                # Fallback: set to 1 hour from now
+                account.expires_at = timezone.now() + timedelta(hours=1)
+                print(f"Using fallback expiration time: {account.expires_at}")
+            
             account.linkedin_member_urn = linkedin_urn
             account.save()
             
             print(f"Successfully saved LinkedIn account for user {request.user.username}")
         except Exception as db_error:
             print(f"Database error saving LinkedIn account: {str(db_error)}")
+            import traceback
+            traceback.print_exc()
             return render(request, 'linkedin_connected.html', {
                 'success': False,
                 'message': f'Error saving LinkedIn account: {str(db_error)}'
