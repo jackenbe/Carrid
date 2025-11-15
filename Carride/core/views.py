@@ -143,61 +143,37 @@ def linkedin_callback(request):
         refresh_token = token_data.get("refresh_token")
         expires_in = token_data.get("expires_in", 3600)
 
-        # Get LinkedIn Profile for member ID
-        # Note: Must include LinkedIn-Version header for API v2
-        me_resp = requests.get(
-            "https://api.linkedin.com/v2/me",
+        # Get LinkedIn Profile using userinfo endpoint
+        # This endpoint works with openid, email, profile scopes
+        userinfo_resp = requests.get(
+            "https://api.linkedin.com/v2/userinfo",
             headers={
                 "Authorization": f"Bearer {access_token}",
-                "LinkedIn-Version": "202410"
             }
         )
 
-        if me_resp.status_code != 200:
-            error_msg = f"Failed to get LinkedIn profile: {me_resp.text}"
+        if userinfo_resp.status_code != 200:
+            error_msg = f"Failed to get user info: {userinfo_resp.text}"
             print(error_msg)
-            
-            # Check for permission errors
-            if "ACCESS_DENIED" in me_resp.text or "Not enough permissions" in me_resp.text:
-                return render(request, 'linkedin_connected.html', {
-                    'success': False,
-                    'message': '''
-                    ⚠️ LinkedIn App Permissions Issue
-                    
-                    Your LinkedIn app doesn't have permission to access your profile.
-                    
-                    To fix this:
-                    1. Go to https://www.linkedin.com/developers/apps
-                    2. Select your app
-                    3. Go to the "Products" tab
-                    4. Make sure "Sign In with LinkedIn" is approved and activated
-                    5. Go to the "Auth" tab and verify these scopes are authorized:
-                       - openid
-                       - email
-                       - profile
-                    
-                    If you recently added scopes, try reconnecting your LinkedIn account.
-                    '''
-                })
             
             return render(request, 'linkedin_connected.html', {
                 'success': False,
                 'message': f'Failed to get LinkedIn profile: {error_msg}'
             })
 
-        me = me_resp.json()
-        print(f"LinkedIn API response: {me}")
+        userinfo = userinfo_resp.json()
+        print(f"LinkedIn userinfo response: {userinfo}")
 
-        # LinkedIn API returns 'id' field
-        if "id" not in me:
-            error_msg = f"No 'id' in LinkedIn response. Response: {me}"
+        # Extract LinkedIn ID from the sub field (subject claim in OpenID)
+        if "sub" not in userinfo:
+            error_msg = f"No 'sub' in userinfo response. Response: {userinfo}"
             print(error_msg)
             return render(request, 'linkedin_connected.html', {
                 'success': False,
                 'message': 'Failed to get LinkedIn profile ID. Please ensure your app has the correct scopes.'
             })
 
-        linkedin_id = me["id"]
+        linkedin_id = userinfo["sub"]
         linkedin_urn = f"urn:li:person:{linkedin_id}"
 
         # Save to DB

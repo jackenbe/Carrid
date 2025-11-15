@@ -11,9 +11,11 @@ Your `.env` file must contain the following (keep this file secret!):
 LINKEDIN_CLIENT_ID=your_client_id_here
 LINKEDIN_CLIENT_SECRET=your_client_secret_here
 LINKEDIN_REDIRECT_URI=http://localhost:8000/auth/linkedin/callback/
-LINKEDIN_SCOPES=openid,email,profile
+LINKEDIN_SCOPES=openid,email,profile,w_member_social
 ADK_API_KEY=your_gemini_api_key_here
 ```
+
+**Important**: The `w_member_social` scope is required for posting to LinkedIn. Request this separately from your LinkedIn app dashboard.
 
 ## LinkedIn App Configuration
 
@@ -43,17 +45,12 @@ ADK_API_KEY=your_gemini_api_key_here
 ### Step 5: Configure Required Scopes
 1. Go to the "Auth" tab
 2. Under "Authorized scopes", make sure you have at least:
-   - `openid`
-   - `email`
-   - `profile`
+   - ✅ `openid` - Basic OpenID authentication (for /v2/userinfo endpoint)
+   - ✅ `email` - Access to user's email address
+   - ✅ `profile` - Access to user's basic profile info
+   - ✅ `w_member_social` - Permission to post on behalf of the user (required for posting)
 
-These scopes allow:
-- `openid` - Basic OpenID authentication
-- `email` - Access to user's email address
-- `profile` - Access to user's basic profile info (name, ID, etc.)
-
-For posting to LinkedIn, you'll also eventually need (request separately):
-- `w_member_social` - Permission to post on behalf of the user
+**Note**: `w_member_social` may need to be requested separately and approved by LinkedIn. This can take a few hours to a few days.
 
 ## Common Issues
 
