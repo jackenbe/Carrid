@@ -15,6 +15,6 @@ urlpatterns = [
     path('terms_of_use/', terms_of_use, name='terms_of_use'),
     path("auth/linkedin/url/", linkedin_auth_url, name="linkedin_auth_url"),
     path("auth/linkedin/callback/", linkedin_callback, name="linkedin_callback"),
-    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('logout/', auth_views.LogoutView.as_view(http_method_names=['get', 'post']), name='logout'),
     path('linkedin/post/', generate_and_post, name='linkedin_post'),
 ]

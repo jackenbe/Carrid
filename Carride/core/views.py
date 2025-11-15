@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from .form import QuizForm, SignUpForm, LinkedInPostForm
+from .form import QuizForm, SignUpForm
 import urllib.parse
 from .utils import generate_state
 from django.conf import settings
@@ -250,41 +250,69 @@ def generate_and_post(request):
             return HttpResponse("Please connect your LinkedIn account first!", status=400)
         
         user_text = request.POST.get("user_text")
-        image_file = request.FILES.get("image")  # uploaded file, optional
+        action = request.POST.get("action")  # Check if this is a preview or actual post
+        image_files = request.FILES.getlist("images")  # Get multiple images
 
-        # 1. Generate final caption using Gemini
-        final_text = rewrite_post_with_gemini(user_text)
-
-        # 2. Save image temporarily
-        img_path = None
-        if image_file:
-            import os
-            media_dir = settings.MEDIA_ROOT
-            if not os.path.exists(media_dir):
-                os.makedirs(media_dir)
-            img_path = os.path.join(media_dir, f"temp_{image_file.name}")
-            with open(img_path, "wb") as f:
-                for chunk in image_file.chunks():
-                    f.write(chunk)
-
-        # 3. Post to LinkedIn
-        try:
-            result = post_to_linkedin(
-                user=request.user,
-                text=final_text,
-                image_path=img_path
-            )
-            return render(request, "linkedin_connected.html", {
-                "success": True,
-                "message": "Posted to LinkedIn successfully!",
-                "final_text": final_text
+        # Step 1: Generate preview of professional post
+        if action == "preview":
+            final_text = rewrite_post_with_gemini(user_text)
+            
+            # Store image files in session temporarily for preview
+            image_paths = []
+            if image_files:
+                import os
+                media_dir = settings.MEDIA_ROOT
+                if not os.path.exists(media_dir):
+                    os.makedirs(media_dir)
+                
+                for idx, image_file in enumerate(image_files):
+                    img_path = os.path.join(media_dir, f"temp_{idx}_{image_file.name}")
+                    with open(img_path, "wb") as f:
+                        for chunk in image_file.chunks():
+                            f.write(chunk)
+                    image_paths.append(img_path)
+            
+            # Store image paths in session
+            request.session['temp_image_paths'] = image_paths
+            
+            return render(request, "generate_post.html", {
+                "linkedin_connected": linkedin_connected,
+                "original_text": user_text,
+                "preview_text": final_text,
+                "show_preview": True,
+                "image_count": len(image_paths),
             })
-        except Exception as e:
-            return render(request, "linkedin_connected.html", {
-                "success": False,
-                "message": f"Error posting to LinkedIn: {str(e)}",
-                "final_text": final_text
-            })
+        
+        # Step 2: User confirmed, now post to LinkedIn
+        elif action == "post":
+            final_text = request.POST.get("preview_text")
+            
+            # Get stored image paths from session
+            image_paths = request.session.get('temp_image_paths', [])
+
+            # Post to LinkedIn
+            try:
+                result = post_to_linkedin(
+                    user=request.user,
+                    text=final_text,
+                    image_paths=image_paths
+                )
+                
+                # Clean up session
+                if 'temp_image_paths' in request.session:
+                    del request.session['temp_image_paths']
+                
+                return render(request, "linkedin_connected.html", {
+                    "success": True,
+                    "message": "Posted to LinkedIn successfully!",
+                    "final_text": final_text
+                })
+            except Exception as e:
+                return render(request, "linkedin_connected.html", {
+                    "success": False,
+                    "message": f"Error posting to LinkedIn: {str(e)}",
+                    "final_text": final_text
+                })
 
     return render(request, "generate_post.html", {
         "linkedin_connected": linkedin_connected

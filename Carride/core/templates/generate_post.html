@@ -18,6 +18,8 @@
     </div>
     {% endif %}
 
+    <!-- Original Text Input Form -->
+    {% if not show_preview %}
     <form method="post" enctype="multipart/form-data" class="space-y-6">
         {% csrf_token %}
         
@@ -35,29 +37,33 @@
         </div>
 
         <div>
-            <label for="image" class="block text-lg font-semibold mb-2">Add an Image (Optional)</label>
+            <label for="images" class="block text-lg font-semibold mb-2">Add Images (Optional)</label>
             <input 
                 type="file"
-                id="image"
-                name="image"
+                id="images"
+                name="images"
+                multiple
                 accept="image/*"
                 class="block w-full text-gray-700 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
             />
-            <p class="text-gray-600 text-sm mt-1">Upload an image to attach to your post (JPG, PNG, etc.)</p>
+            <p class="text-gray-600 text-sm mt-1">Upload multiple images to attach to your post (JPG, PNG, etc.)</p>
+            <div id="image-preview" class="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2"></div>
         </div>
 
         <div class="bg-blue-50 border-l-4 border-blue-500 p-4">
             <p class="text-blue-900 text-sm">
-                <strong>Note:</strong> Your post will be rewritten using AI to be more engaging and professional before posting to LinkedIn.
+                <strong>Note:</strong> Your post will be rewritten using AI to be more professional and engaging before you confirm posting to LinkedIn.
             </p>
         </div>
 
         <button 
             type="submit"
+            name="action"
+            value="preview"
             {% if not linkedin_connected %}disabled{% endif %}
             class="w-full px-6 py-3 bg-orange-500 text-white font-bold rounded-lg hover:bg-orange-600 {% if not linkedin_connected %}opacity-50 cursor-not-allowed{% endif %}"
         >
-            Generate & Post to LinkedIn
+            Preview Professional Version
         </button>
     </form>
 
@@ -71,5 +77,64 @@
             <li>✓ High-quality images get more engagement</li>
         </ul>
     </div>
+
+    {% else %}
+    <!-- Preview and Confirmation -->
+    <div class="space-y-6">
+        <div class="bg-gray-50 border border-gray-300 rounded-lg p-6">
+            <h3 class="text-lg font-semibold mb-4">Your Original Input:</h3>
+            <p class="text-gray-700 whitespace-pre-wrap">{{ original_text }}</p>
+        </div>
+
+        <div class="bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-300 rounded-lg p-6">
+            <h3 class="text-lg font-semibold mb-2 text-orange-900">✨ AI-Enhanced Version:</h3>
+            <p class="text-gray-700 whitespace-pre-wrap text-base leading-relaxed">{{ preview_text }}</p>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="post">
+            <input type="hidden" name="preview_text" value="{{ preview_text }}">
+            <input type="hidden" name="image" value="">
+
+            <div class="flex gap-4">
+                <a href="{% url 'core:linkedin_post' %}" class="flex-1 px-6 py-3 bg-gray-500 text-white font-bold rounded-lg hover:bg-gray-600 text-center">
+                    ← Edit Again
+                </a>
+                <button 
+                    type="submit"
+                    class="flex-1 px-6 py-3 bg-green-500 text-white font-bold rounded-lg hover:bg-green-600"
+                >
+                    ✓ Post to LinkedIn
+                </button>
+            </div>
+        </form>
+
+        <div class="bg-blue-50 border-l-4 border-blue-500 p-4">
+            <p class="text-blue-900 text-sm">
+                <strong>How this works:</strong> We used AI to make your post more professional while keeping your authentic voice. You can edit your original text and preview again, or post directly to LinkedIn now.
+            </p>
+        </div>
+    </div>
+    {% endif %}
 </div>
+
+<script>
+    // Image preview functionality
+    document.getElementById('images').addEventListener('change', function(e) {
+        const preview = document.getElementById('image-preview');
+        preview.innerHTML = '';
+        
+        for (let file of this.files) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = document.createElement('img');
+                img.src = event.target.result;
+                img.className = 'w-full h-32 object-cover rounded-lg border border-gray-300';
+                preview.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+</script>
 {% endblock %}

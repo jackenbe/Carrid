@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,7 +22,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-&!9df@hlj)%-q$d&ghe=6774pwz06mz^sueo+ts&+uk@l0gs39'
+SECRET_KEY = 'Testing-Secret-Key-Change-Me!'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -71,9 +73,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'Carride.wsgi.application'
 
 # Linkedin
-import os
-from dotenv import load_dotenv
-
 load_dotenv()
 
 LINKEDIN_CLIENT_ID = os.getenv("LINKEDIN_CLIENT_ID")
@@ -140,6 +139,7 @@ STATIC_URL = 'static/'
 # Authentication
 LOGIN_URL = 'core:login'
 LOGIN_REDIRECT_URL = 'core:home_view'
+LOGOUT_REDIRECT_URL = 'core:home_view'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

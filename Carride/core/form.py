@@ -1,36 +1,53 @@
 from django import forms
-from .models import Quiz
-from .models import LinkedIn
+from .models import Quiz, LinkedInPost
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.models import User
 
 class QuizForm(forms.ModelForm):
     class Meta:
         model = Quiz
-        fields= ["university","field","major","year"]
-        labels={
-            "university":"University",
-            "field":"Career path",
-            "major":"Major",
-            "year":"Year"
+        fields = ["university", "field", "major", "year"]
+        labels = {
+            "university": "University",
+            "field": "Career path",
+            "major": "Major",
+            "year": "Year"
+        }
+        widgets = {
+            "university": forms.TextInput(attrs={
+                'placeholder': 'e.g., Florida Atlantic University',
+                'class': 'w-full py-2 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+            }),
+            "field": forms.TextInput(attrs={
+                'placeholder': 'e.g., Software Engineering',
+                'class': 'w-full py-2 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+            }),
+            "major": forms.TextInput(attrs={
+                'placeholder': 'e.g., Computer Science',
+                'class': 'w-full py-2 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+            }),
+            "year": forms.NumberInput(attrs={
+                'min': '1',
+                'max': '5',
+                'class': 'w-full py-2 px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500',
+                'placeholder': 'e.g., 3',
+            }),
         }
 
-class LinkedInForm(forms.ModelForm):
-    class Meta:
-        model = LinkedIn
-        fields = ["has_experience", "topic_type", "description", "key_learnings", "image"]
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
 
-    def clean(self):
-        cleaned_data = super().clean()
-        has_exp = cleaned_data.get("has_experience")
-        desc = cleaned_data.get("description")
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if self.user:
+            instance.user = self.user
+        if commit:
+            instance.save()
+        return instance
 
-        if has_exp and not desc:
-            self.add_error("description", "Please describe your experience")
 
-        return cleaned_data
-        
-    
+
 class SignUpForm(UserCreationForm):
     class Meta:
         model= User
@@ -61,9 +78,4 @@ class LoginForm(AuthenticationForm):
         'placeholder': 'Your password',
         'class': 'w-full py-4 px-6 rounded-xl',
     }))
-
-
-class LinkedInPostForm(forms.Form):
-    text_input = forms.CharField(widget=forms.Textarea, required=True)
-    image = forms.ImageField(required=False)
     

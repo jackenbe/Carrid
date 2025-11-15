@@ -8,26 +8,32 @@ def ensure_valid_token(account):
     if timezone.now() >= account.expires_at:
         refresh_token(account)
 
-def post_to_linkedin(user, text, image_path=None):
+def post_to_linkedin(user, text, image_paths=None):
     account = LinkedInAccount.objects.get(user=user)
 
     # Ensure token is fresh
     ensure_valid_token(account)
 
-    # If image, upload first (we’ll build this next)
-    if image_path:
-        media_urn = upload_linkedin_image(account, image_path)
-        media_section = [
-            {
+    # Normalize image_paths to list
+    if image_paths is None:
+        image_paths = []
+    elif isinstance(image_paths, str):
+        image_paths = [image_paths]
+
+    # Upload images and build media section
+    media_section = []
+    for img_path in image_paths:
+        try:
+            media_urn = upload_linkedin_image(account, img_path)
+            media_section.append({
                 "status": "READY",
                 "media": media_urn,
-                "title": {"text": "Image attached"}
-            }
-        ]
-        share_media_category = "IMAGE"
-    else:
-        media_section = []
-        share_media_category = "NONE"
+                "title": {"text": "Image"}
+            })
+        except Exception as e:
+            print(f"Warning: Failed to upload {img_path}: {e}")
+
+    share_media_category = "IMAGE" if media_section else "NONE"
 
     # Build post body
     body = {
@@ -97,5 +103,3 @@ def upload_linkedin_image(account, image_path):
         )
 
     return asset_urn
-
-
