@@ -144,14 +144,42 @@ def linkedin_callback(request):
         expires_in = token_data.get("expires_in", 3600)
 
         # Get LinkedIn Profile for member ID
+        # Note: Must include LinkedIn-Version header for API v2
         me_resp = requests.get(
             "https://api.linkedin.com/v2/me",
-            headers={"Authorization": f"Bearer {access_token}"}
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "LinkedIn-Version": "202410"
+            }
         )
 
         if me_resp.status_code != 200:
             error_msg = f"Failed to get LinkedIn profile: {me_resp.text}"
             print(error_msg)
+            
+            # Check for permission errors
+            if "ACCESS_DENIED" in me_resp.text or "Not enough permissions" in me_resp.text:
+                return render(request, 'linkedin_connected.html', {
+                    'success': False,
+                    'message': '''
+                    ⚠️ LinkedIn App Permissions Issue
+                    
+                    Your LinkedIn app doesn't have permission to access your profile.
+                    
+                    To fix this:
+                    1. Go to https://www.linkedin.com/developers/apps
+                    2. Select your app
+                    3. Go to the "Products" tab
+                    4. Make sure "Sign In with LinkedIn" is approved and activated
+                    5. Go to the "Auth" tab and verify these scopes are authorized:
+                       - openid
+                       - email
+                       - profile
+                    
+                    If you recently added scopes, try reconnecting your LinkedIn account.
+                    '''
+                })
+            
             return render(request, 'linkedin_connected.html', {
                 'success': False,
                 'message': f'Failed to get LinkedIn profile: {error_msg}'
